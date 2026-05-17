@@ -2870,14 +2870,19 @@ function _doneTasks(s) {
 function _playedGames(s) {
   return (s.games||[]).filter(g=>g.type==='remember' && g.achievementConfirmed===true).length;
 }
+// Only count books that went through the reading flow (not direct "To Remember" adds),
+// OR "To Remember" books that were manually confirmed via "Add to accomplishments".
+function _finishedBooksCount(s) {
+  return (s.finishedBooks||[]).filter(fb => fb.type !== 'remember' || fb.achievementConfirmed === true).length;
+}
 
 const ACHIEVEMENTS = [
   // ── Books ──
-  { id:'book_5',   cat:'books',       emoji:'📒', label:'Read 5 books',      check:s=>s.finishedBooks.length>=5,  threshold:5,  total:()=>state.finishedBooks.length },
-  { id:'book_10',  cat:'books',       emoji:'📗', label:'Read 10 books',     check:s=>s.finishedBooks.length>=10, threshold:10, total:()=>state.finishedBooks.length },
-  { id:'book_20',  cat:'books',       emoji:'📘', label:'Read 20 books',     check:s=>s.finishedBooks.length>=20, threshold:20, total:()=>state.finishedBooks.length },
-  { id:'book_40',  cat:'books',       emoji:'📕', label:'Read 40 books',     check:s=>s.finishedBooks.length>=40, threshold:40, total:()=>state.finishedBooks.length },
-  { id:'book_50',  cat:'books',       emoji:'📔', label:'Read 50 books',     check:s=>s.finishedBooks.length>=50, threshold:50, total:()=>state.finishedBooks.length },
+  { id:'book_5',   cat:'books',       emoji:'📒', label:'Read 5 books',      check:s=>_finishedBooksCount(s)>=5,  threshold:5,  total:()=>_finishedBooksCount(state) },
+  { id:'book_10',  cat:'books',       emoji:'📗', label:'Read 10 books',     check:s=>_finishedBooksCount(s)>=10, threshold:10, total:()=>_finishedBooksCount(state) },
+  { id:'book_20',  cat:'books',       emoji:'📘', label:'Read 20 books',     check:s=>_finishedBooksCount(s)>=20, threshold:20, total:()=>_finishedBooksCount(state) },
+  { id:'book_40',  cat:'books',       emoji:'📕', label:'Read 40 books',     check:s=>_finishedBooksCount(s)>=40, threshold:40, total:()=>_finishedBooksCount(state) },
+  { id:'book_50',  cat:'books',       emoji:'📔', label:'Read 50 books',     check:s=>_finishedBooksCount(s)>=50, threshold:50, total:()=>_finishedBooksCount(state) },
   // ── Tasks ──
   { id:'task_10',  cat:'tasks',       emoji:'🌱', label:'Finish 10 tasks',   check:s=>_doneTasks(s)>=10,  threshold:10,  total:()=>_doneTasks(state) },
   { id:'task_30',  cat:'tasks',       emoji:'🪴', label:'Finish 30 tasks',   check:s=>_doneTasks(s)>=30,  threshold:30,  total:()=>_doneTasks(state) },
@@ -5961,6 +5966,11 @@ function renderRecMovies(){
   if(!items.length){el.appendChild(recEmpty('No watched movies yet ✅'));renderPagination('movies',0);return;}
   pagSlice(items,'movies').forEach(m=>{
     const icon = m.type === 'remember' ? '⭐' : '🎬';
+    const achBtn = m.type === 'remember'
+      ? (m.achievementConfirmed
+          ? `<button class="btn btn-danger" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="removeMovieAchievement('${m.id}')">🏆 Remove from accomplishments</button>`
+          : `<button class="btn btn-sage" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="confirmMovieAchievement('${m.id}')">🏆 Add to accomplishments</button>`)
+      : '';
     const d=document.createElement('div'); d.className='record-item rec-movie';
     d.innerHTML=`<div class="record-body">
       <div class="record-name" style="display:flex;align-items:center;gap:8px;">${icon}<span>${esc(m.title)}</span></div>
@@ -5970,6 +5980,7 @@ function renderRecMovies(){
     <div class="record-actions">
       <button class="btn btn-edit" style="font-size:0.78rem;padding:4px 9px;" onclick="renameMovieRec('${m.id}')">✏️</button>
       <button class="btn btn-edit" style="font-size:0.78rem;padding:4px 9px;white-space:nowrap;" onclick="editMediaRating('movie','${m.id}')">⭐ Edit</button>
+      ${achBtn}
       <button class="btn btn-undo" onclick="undoMovieWatched('${m.id}')">↩ Undo</button>
       <button class="btn btn-danger" onclick="delRecMovieEntry('${m.id}')">✕</button>
     </div>`;
@@ -6001,12 +6012,20 @@ function undoMovieWatched(recId){
 
 function confirmMovieAchievement(recId){
   const entry=state.movieRecord.find(x=>x.id===recId); if(!entry)return;
-  if(entry.achievementConfirmed){ _showToast('Already in achievements!'); return; }
+  if(entry.achievementConfirmed){ _showToast('Already in accomplishments!'); return; }
   const now=Date.now();
   entry.achievementConfirmed=true;
   state.watchedMovies.push({id:uid(),title:entry.title,date:now});
   saveState(); renderRecMovies(); checkAchievements();
-  _showToast('🏆 Added to achievements!'); confetti(30);
+  _showToast('🏆 Added to accomplishments!'); confetti(30);
+}
+function removeMovieAchievement(recId){
+  const entry=state.movieRecord.find(x=>x.id===recId); if(!entry)return;
+  entry.achievementConfirmed=false;
+  const wIdx=state.watchedMovies.map(w=>w.title).lastIndexOf(entry.title);
+  if(wIdx!==-1) state.watchedMovies.splice(wIdx,1);
+  saveState(); renderRecMovies(); checkAchievements();
+  _showToast('↩ Removed from accomplishments.');
 }
 
 function delRecMovieEntry(recId){
@@ -6090,6 +6109,11 @@ function renderRecBooks(){
   pagSlice(allFin,'books').forEach(fb=>{
     const isRemember = fb.type === 'remember';
     const icon = isRemember ? '⭐' : '📗';
+    const achBtn = isRemember
+      ? (fb.achievementConfirmed
+          ? `<button class="btn btn-danger" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="removeBookAchievement('${fb.id}')">🏆 Remove from accomplishments</button>`
+          : `<button class="btn btn-sage" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="confirmBookAchievement('${fb.id}')">🏆 Add to accomplishments</button>`)
+      : '';
     const d=document.createElement('div'); d.className='record-item rec-book-done';
     if (isRemember) d.style.cssText = 'border-color:var(--coral-light);background:#fff5f2;';
     d.innerHTML=`<div class="record-body">
@@ -6099,6 +6123,7 @@ function renderRecBooks(){
     </div><div class="record-actions">
       <button class="btn btn-edit" style="font-size:0.78rem;padding:4px 9px;" onclick="renameBookRec('${fb.id}')">✏️</button>
       ${!isRemember ? `<button class="btn btn-undo" onclick="undoFinBook('${fb.id}')">↩ Undo</button>` : ''}
+      ${achBtn}
       <button class="btn btn-danger" onclick="delRecBook('${fb.id}')">✕</button>
     </div>`;
     el.appendChild(d);
@@ -6116,6 +6141,18 @@ function undoFinBook(id){
 function delRecBook(id){
   const fb=state.finishedBooks.find(x=>x.id===id);
   showConfirm('📚',`Remove "${fb?.title}" from your finished record?`,()=>{ state.finishedBooks=state.finishedBooks.filter(x=>x.id!==id); saveState(); renderRecBooks(); sDel(); checkAchievements(); });
+}
+function confirmBookAchievement(id) {
+  const fb = state.finishedBooks.find(x => x.id === id); if (!fb) return;
+  fb.achievementConfirmed = true;
+  saveState(); renderRecBooks(); checkAchievements();
+  _showToast('🏆 Added to accomplishments!'); confetti(30);
+}
+function removeBookAchievement(id) {
+  const fb = state.finishedBooks.find(x => x.id === id); if (!fb) return;
+  fb.achievementConfirmed = false;
+  saveState(); renderRecBooks(); checkAchievements();
+  _showToast('↩ Removed from accomplishments.');
 }
 
 // Study record
@@ -6568,7 +6605,13 @@ function confirmGameAchievement(id) {
   const g = state.games.find(x => x.id === id); if (!g) return;
   g.achievementConfirmed = true;
   saveState(); renderRecGame(); checkAchievements();
-  _showToast('🏆 Added to achievements!');
+  _showToast('🏆 Added to accomplishments!'); confetti(30);
+}
+function removeGameAchievement(id) {
+  const g = state.games.find(x => x.id === id); if (!g) return;
+  g.achievementConfirmed = false;
+  saveState(); renderRecGame(); checkAchievements();
+  _showToast('↩ Removed from accomplishments.');
 }
 
 function renderRecGame() {
@@ -6628,8 +6671,8 @@ function renderRecGame() {
   if (!items.length) { el.appendChild(recEmpty('No played games yet ✅')); renderPagination('game', 0); return; }
   pagSlice(items,'game').forEach(g => {
     const achBtn = g.achievementConfirmed
-      ? '<span style="font-size:0.78rem;color:var(--sage-dark);font-weight:700;">🏆 In achievements</span>'
-      : `<button class="btn btn-sage" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="confirmGameAchievement('${g.id}')">🏆 Add to achievements</button>`;
+      ? `<button class="btn btn-danger" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="removeGameAchievement('${g.id}')">🏆 Remove from accomplishments</button>`
+      : `<button class="btn btn-sage" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="confirmGameAchievement('${g.id}')">🏆 Add to accomplishments</button>`;
     const d = document.createElement('div'); d.className = 'record-item rec-game-item';
     d.innerHTML = `<div class="record-body">
       <div class="record-name" style="display:flex;align-items:center;gap:8px;">🎮<span>${esc(g.title)}</span></div>
