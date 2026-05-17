@@ -3202,14 +3202,16 @@ function renderMovies(){
 function addMovie(type){
   if(!_pendingMovieTitle) return;
   const entry = {id:uid(), title:_pendingMovieTitle, type, date:Date.now()};
-  state.movieRecord.push(entry); // goes directly to persistent record
+  state.movies.push(entry);        // show in Today tab
+  state.movieRecord.push(entry);   // persist in Record tab
   document.getElementById('movie-input').value='';
   document.getElementById('movie-input').disabled=false;
   document.getElementById('movie-type-chooser').classList.remove('show');
   _pendingMovieTitle='';
   saveState(); sAdd();
+  renderMovies();
   if(recTab==='movies') renderRecMovies();
-  const label = type==='watch' ? '🍿 Added to movies record!' : '⭐ Added to movies record!';
+  const label = type==='watch' ? '🍿 Added to movies!' : '⭐ Added to movies!';
   _showToast(label);
   pickedFlag=false;
   document.getElementById('movie-choose-result').style.display='none';
@@ -5981,7 +5983,8 @@ function markMovieWatchedFromRecord(recId){
   const now=Date.now();
   entry.type='watched'; entry.watchedDate=now;
   state.watchedMovies.push({id:uid(),title:entry.title,date:now});
-  saveState(); renderRecMovies(); sStudyDone(); confetti(30); checkAchievements();
+  state.movies=state.movies.filter(x=>x.id!==recId);
+  saveState(); renderRecMovies(); renderMovies(); sStudyDone(); confetti(30); checkAchievements();
   openMediaRatingModal('movie', recId, false);
 }
 
