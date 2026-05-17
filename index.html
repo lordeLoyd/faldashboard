@@ -822,6 +822,12 @@
     margin-right:-2px;           /* extend past right card border */
     border-radius:0 10px 0 8px;  /* match card corner top-right, soft bottom-left */
   }
+  /* Keep all record-action buttons compact — overrides the base .btn min-height:44px */
+  .record-actions .btn {
+    min-height: 34px;
+    font-size: 0.78rem;
+    padding: 4px 9px;
+  }
   .record-sub-label { font-weight:800; font-size:0.78rem; color:var(--text-light); text-transform:uppercase; letter-spacing:1px; margin:10px 0 6px; }
   .record-sub-label:first-child { margin-top:0; }
   .record-empty { color:var(--text-light); font-size:0.88rem; font-style:italic; font-weight:600; padding:8px 0; }
