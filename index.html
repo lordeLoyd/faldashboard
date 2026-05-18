@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="My Dashboard">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#7ec8a4">
-<link rel="apple-touch-icon" sizes="180x180" id="apple-touch-icon-link">
+<link rel="apple-touch-icon" id="apple-touch-icon-link">
 <link rel="manifest" href="manifest.json">
 <!-- NOTE: rename your manifest file to exactly "manifest.json" for standalone home-screen mode to apply -->
 <title>🌿 My Daily Dashboard</title>
@@ -27,16 +27,6 @@
     --shadow-hover: 0 8px 24px rgba(74,55,40,0.16);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  /* iOS smoothness: momentum scrolling on all scrollable containers */
-  html, body { -webkit-overflow-scrolling: touch; }
-  /* Prevent iOS rubber-band over-scroll on fixed overlays */
-  .great-list-sheet, .mgl-sheet, .drum-picker-list, .tabs-wrap {
-    -webkit-overflow-scrolling: touch;
-  }
-  /* Prevent input zoom on focus (iOS zooms when font < 16px) */
-  input[type="text"], input[type="number"], textarea, select {
-    font-size: max(16px, 0.9rem) !important;
-  }
   button, input, select, textarea, [role="button"],
   .tab-btn, .rec-tab-btn, .today-sub-btn, .write-sub-btn,
   .sky-ctrl-btn, .flute-btn, .through-btn-complete, .through-btn-del,
@@ -46,24 +36,23 @@
   .mgl-btn-accept, .mgl-btn-skip, .writing-item { touch-action: manipulation; }
   body {
     font-family: 'Nunito', sans-serif; background: transparent;
-    min-height: 100vh; min-height: 100dvh; color: var(--text);
-    padding: calc(24px + env(safe-area-inset-top)) 12px calc(80px + env(safe-area-inset-bottom));
+    min-height: 100vh; min-height: 100dvh; color: var(--text); padding: 24px 12px 80px;
     overscroll-behavior: none;
     overflow-x: hidden;
-    -webkit-text-size-adjust: 100%; /* Prevent font scaling on iOS orientation change */
   }
 
   /* SKY BACKGROUND
-     On iOS/iPhone 14: position:fixed elements are composited correctly in WebKit
-     (sRGB rendering, no linear-gamma issue). The gradient lives on the html element
-     for consistency and to avoid any white flash before JS runs.
-     Only #sky-bg-over (the crossfade overlay) is a separate layer — acceptable
-     since it only animates during 40-min transition windows. */
+     Root cause of Samsung S22 darkening: position:fixed elements are promoted
+     to GPU compositor layers by Android Chrome, which composites them using
+     LINEAR-GAMMA blending — this darkens midtone blues/warms noticeably.
+     Fix: gradient lives on the html element (root compositor layer, no promotion,
+     correct sRGB rendering). Only #sky-bg-over (the crossfade overlay) is a
+     separate layer, and only during 40-min transition windows — acceptable. */
   html {
     /* Default day sky painted before JS runs — avoids any white flash.
-       Uses the correct sRGB values for iOS (iPhone 14 renders these accurately).
+       Uses the Android-compensated bright values (S22 Ultra is always Android).
        JS will overwrite this immediately via syncGradientNow(). */
-    background: linear-gradient(to bottom,#4ab2f8 0%,#74ccf8 38%,#a8e0fc 68%,#cceeff 100%);
+    background: linear-gradient(to bottom,#94d4fb 0%,#aee2fb 38%,#cceafd 68%,#e1f6ff 100%);
     overscroll-behavior: none;
     height: 100%;
   }
@@ -71,15 +60,17 @@
     position: fixed; inset: 0; z-index: -2; pointer-events: none;
     opacity: 0;
     transition: opacity 90s linear;
-    will-change: opacity; /* Safe on iOS — no linear-gamma compositing issue */
+    /* No will-change — avoids a GPU compositing layer that causes linear-gamma
+       blending artifacts on Android Chrome, darkening the gradients */
   }
   #sky-canvas {
     position: fixed; inset: 0; z-index: -1; pointer-events: none;
     image-rendering: pixelated;
-    will-change: contents; /* Safe on iOS — GPU-accelerated canvas is smooth */
+    /* No will-change or translateZ — same reason; the canvas itself is already
+       rasterised per-frame by rAF, no extra compositing layer needed */
   }
   body::before {
-    content:'🍃 ✨ 🌼 🍄 ⭐ 🌿 🦋 🌸'; position:fixed; top:env(safe-area-inset-top,-30px); left:0; right:0;
+    content:'🍃 ✨ 🌼 🍄 ⭐ 🌿 🦋 🌸'; position:fixed; top:-30px; left:0; right:0;
     text-align:center; font-size:1.4rem; letter-spacing:24px; opacity:0.18; pointer-events:none; white-space:nowrap;
   }
 
@@ -205,7 +196,7 @@
   .great-list-sheet {
     background:linear-gradient(175deg,#fefdf8 0%,#f7f5ef 100%);
     border-radius:28px 28px 0 0; width:100%; max-width:520px;
-    padding:20px 18px calc(44px + env(safe-area-inset-bottom));
+    padding:20px 18px 44px;
     box-shadow:0 -12px 60px rgba(5,100,60,0.18), 0 -2px 0 rgba(52,211,153,0.3);
     animation:glSlideUp 0.35s cubic-bezier(0.22,1.2,0.36,1);
     max-height:92dvh; overflow-y:auto; -webkit-overflow-scrolling:touch;
@@ -450,10 +441,11 @@
   .mgl-sheet {
     background:linear-gradient(175deg,#fefdf8 0%,#f7f2ef 100%);
     border-radius:28px 28px 0 0; width:100%; max-width:520px;
-    padding:20px 18px calc(44px + env(safe-area-inset-bottom));
+    padding:20px 18px 44px;
     box-shadow:0 -12px 60px rgba(180,80,30,0.16), 0 -2px 0 rgba(249,215,126,0.4);
     animation:glSlideUp 0.28s cubic-bezier(0.22,1,0.36,1);
     max-height:92dvh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    /* will-change:transform removed — promoting a static sheet wastes a GPU layer */
   }
   .mgl-handle {
     width:44px; height:4px;
@@ -485,13 +477,13 @@
   .modal-close-btn:active { background:rgba(0,0,0,0.13); }
   .modal-box { position:relative; }
   .duration-modal-box { position:relative; }
-  /* iPhone 14 / narrow screen tweaks */
+  /* S22 Ultra / narrow screen tweaks */
   @media (max-width:430px) {
-    .mgl-sheet { padding:16px 14px calc(28px + env(safe-area-inset-bottom)); }
+    .mgl-sheet { padding:16px 14px 28px; }
     .mgl-title { font-size:1.45rem; }
     .mgl-premise-text { font-size:0.95rem; line-height:1.75; }
     .mgl-btn-accept { padding:12px 16px; font-size:0.93rem; min-height:48px; }
-    .great-list-sheet { padding:16px 14px calc(28px + env(safe-area-inset-bottom)); }
+    .great-list-sheet { padding:16px 14px 28px; }
     .modal-box { padding:22px 18px 18px; max-width:92vw; }
     .duration-modal-box { padding:20px 16px 18px; max-width:88vw; }
   }
@@ -965,7 +957,7 @@
 
 
   #sky-controls {
-    position:fixed; bottom:calc(18px + env(safe-area-inset-bottom)); right:18px; z-index:9000;
+    position:fixed; bottom:18px; right:18px; z-index:9000;
     display:flex; align-items:center; gap:6px;
     background:rgba(8,8,22,0.72); /* solid; no backdrop-filter */
     border:1px solid rgba(255,255,255,0.13); border-radius:50px;
@@ -1034,11 +1026,6 @@
   #splash-earth-icon {
     display:inline-flex; align-items:center; justify-content:center;
     image-rendering:pixelated; line-height:1;
-    animation: earthSpin 28s linear infinite;
-  }
-  @keyframes earthSpin {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
   }
   #splash-screen:hover #splash-enter {
     color:#3d8f6c;
@@ -1171,7 +1158,7 @@
   .btn-link-file:hover { background:var(--sage-light); }
 
   @media(max-width:600px){
-    .page-header h1{font-size:1.8rem;} .grid{grid-template-columns:1fr;} body{padding: calc(16px + env(safe-area-inset-top)) 10px calc(80px + env(safe-area-inset-bottom));}
+    .page-header h1{font-size:1.8rem;} .grid{grid-template-columns:1fr;} body{padding:16px 10px 80px;}
     .tab-btn{padding:9px 11px;font-size:0.82rem;letter-spacing:0;}
     .card{padding:18px 14px;}
     .input-row{flex-wrap:wrap;}
@@ -1181,16 +1168,6 @@
     .today-sub-btn{font-size:0.8rem;padding:7px 10px;}
     .rec-tabs{gap:4px;}
     .rec-tab-btn{font-size:0.76rem;padding:6px 9px;min-height:36px;}
-  }
-
-  /* ── iPhone 14 (390 pt) — precise layout tweaks ─────────────── */
-  @media(max-width:393px){
-    .page-header h1{font-size:1.65rem;}
-    .tab-btn{padding:8px 9px;font-size:0.78rem;}
-    .card{padding:15px 12px;}
-    .card-title{font-size:1.2rem;}
-    .btn{font-size:0.82rem;padding:9px 11px;}
-    .today-sub-btn{font-size:0.75rem;padding:6px 9px;}
   }
 
   /* MEDIA (Movie/TV/Game) 10-STAR RATING */
@@ -1273,7 +1250,7 @@
 
   /* Achievement unlock banner */
   #ach-unlock-banner {
-    position:fixed; top:calc(22px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%) translateY(-80px);
+    position:fixed; top:22px; left:50%; transform:translateX(-50%) translateY(-80px);
     z-index:999999;
     background:linear-gradient(135deg,#fbbf24,#f59e0b);
     color:#451a03;
@@ -1413,7 +1390,7 @@
   .break-dur-btn:active { transform:scale(0.93); }
 
   /* ── MINI BREAK BANNER ──────────────────────────────── */
-  #mini-break-banner { position:fixed; top:calc(18px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%) translateY(-90px); z-index:999997; background:linear-gradient(135deg,#818cf8,var(--lavender)); color:white; border-radius:50px; padding:11px 20px; font-family:'Fredoka One',cursive; font-size:0.97rem; letter-spacing:0.3px; box-shadow:0 8px 28px rgba(129,140,248,0.55); display:flex; align-items:center; gap:10px; white-space:nowrap; transition:transform 0.45s cubic-bezier(0.34,1.56,0.64,1),opacity 0.4s ease; opacity:0; pointer-events:none; }
+  #mini-break-banner { position:fixed; top:18px; left:50%; transform:translateX(-50%) translateY(-90px); z-index:999997; background:linear-gradient(135deg,#818cf8,var(--lavender)); color:white; border-radius:50px; padding:11px 20px; font-family:'Fredoka One',cursive; font-size:0.97rem; letter-spacing:0.3px; box-shadow:0 8px 28px rgba(129,140,248,0.55); display:flex; align-items:center; gap:10px; white-space:nowrap; transition:transform 0.45s cubic-bezier(0.34,1.56,0.64,1),opacity 0.4s ease; opacity:0; pointer-events:none; }
   #mini-break-banner.show { transform:translateX(-50%) translateY(0); opacity:1; pointer-events:auto; }
   #mini-break-banner.hide { transform:translateX(-50%) translateY(-90px); opacity:0; pointer-events:none; }
   .mini-break-btn { background:rgba(255,255,255,0.22); color:white; border:1.5px solid rgba(255,255,255,0.45); border-radius:50px; padding:5px 13px; font-family:'Fredoka One',cursive; font-size:0.88rem; cursor:pointer; transition:background 0.15s; }
@@ -1422,7 +1399,7 @@
 
   /* ── iOS ADD TO HOME SCREEN BANNER ─────────────────── */
   #ios-install-banner {
-    position:fixed; bottom:calc(24px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
     z-index:999998; width:min(390px,92vw);
     background:var(--white); border:2.5px solid var(--sage-light);
     border-radius:var(--radius); padding:14px 16px;
@@ -1606,7 +1583,7 @@
 </div>
 
 <!-- NEW DAY BANNER -->
-<div id="new-day-banner" style="display:none;position:fixed;top:calc(18px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:99999;background:linear-gradient(135deg,var(--sage),var(--sky));color:white;border-radius:50px;padding:12px 28px;font-family:'Fredoka One',cursive;font-size:1.05rem;letter-spacing:0.5px;box-shadow:0 6px 20px rgba(126,200,164,0.4);align-items:center;gap:10px;white-space:nowrap;animation:popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);">
+<div id="new-day-banner" style="display:none;position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;background:linear-gradient(135deg,var(--sage),var(--sky));color:white;border-radius:50px;padding:12px 28px;font-family:'Fredoka One',cursive;font-size:1.05rem;letter-spacing:0.5px;box-shadow:0 6px 20px rgba(126,200,164,0.4);align-items:center;gap:10px;white-space:nowrap;animation:popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);">
   🌅 Good morning! A fresh new day — your Today tab has been reset 🌿
 </div>
 
@@ -2876,10 +2853,16 @@ function _doneTasks(s) {
 function _playedGames(s) {
   return (s.games||[]).filter(g=>g.type==='remember' && g.achievementConfirmed===true).length;
 }
-// Only count books that went through the reading flow (not direct "To Remember" adds),
-// OR "To Remember" books that were manually confirmed via "Add to accomplishments".
+// Only count books explicitly added to accomplishments (achievementConfirmed=true),
+// whether via the normal finish flow or manual "Add to accomplishments".
 function _finishedBooksCount(s) {
-  return (s.finishedBooks||[]).filter(fb => fb.type !== 'remember' || fb.achievementConfirmed === true).length;
+  return (s.finishedBooks||[]).filter(fb => fb.achievementConfirmed === true).length;
+}
+
+// Count movies where achievementConfirmed=true — always matches the buttons in the Records tab,
+// regardless of watchedMovies array state.
+function _confirmedMoviesCount(s) {
+  return (s.movieRecord||[]).filter(m => m.achievementConfirmed === true).length;
 }
 
 const ACHIEVEMENTS = [
@@ -2896,12 +2879,12 @@ const ACHIEVEMENTS = [
   { id:'task_100', cat:'tasks',       emoji:'🌲', label:'Finish 100 tasks',  check:s=>_doneTasks(s)>=100, threshold:100, total:()=>_doneTasks(state) },
   { id:'task_200', cat:'tasks',       emoji:'🌳', label:'Finish 200 tasks',  check:s=>_doneTasks(s)>=200, threshold:200, total:()=>_doneTasks(state) },
   // ── Movies ──
-  { id:'movie_5',   cat:'movies',     emoji:'🎬', label:'Watch 5 movies',    check:s=>s.watchedMovies.length>=5,   threshold:5,   total:()=>state.watchedMovies.length },
-  { id:'movie_10',  cat:'movies',     emoji:'🍿', label:'Watch 10 movies',   check:s=>s.watchedMovies.length>=10,  threshold:10,  total:()=>state.watchedMovies.length },
-  { id:'movie_20',  cat:'movies',     emoji:'🎥', label:'Watch 20 movies',   check:s=>s.watchedMovies.length>=20,  threshold:20,  total:()=>state.watchedMovies.length },
-  { id:'movie_50',  cat:'movies',     emoji:'🎦', label:'Watch 50 movies',   check:s=>s.watchedMovies.length>=50,  threshold:50,  total:()=>state.watchedMovies.length },
-  { id:'movie_80',  cat:'movies',     emoji:'🎞️', label:'Watch 80 movies',   check:s=>s.watchedMovies.length>=80,  threshold:80,  total:()=>state.watchedMovies.length },
-  { id:'movie_100', cat:'movies',     emoji:'🎖️', label:'Watch 100 movies',  check:s=>s.watchedMovies.length>=100, threshold:100, total:()=>state.watchedMovies.length },
+  { id:'movie_5',   cat:'movies',     emoji:'🎬', label:'Watch 5 movies',    check:s=>_confirmedMoviesCount(s)>=5,   threshold:5,   total:()=>_confirmedMoviesCount(state) },
+  { id:'movie_10',  cat:'movies',     emoji:'🍿', label:'Watch 10 movies',   check:s=>_confirmedMoviesCount(s)>=10,  threshold:10,  total:()=>_confirmedMoviesCount(state) },
+  { id:'movie_20',  cat:'movies',     emoji:'🎥', label:'Watch 20 movies',   check:s=>_confirmedMoviesCount(s)>=20,  threshold:20,  total:()=>_confirmedMoviesCount(state) },
+  { id:'movie_50',  cat:'movies',     emoji:'🎦', label:'Watch 50 movies',   check:s=>_confirmedMoviesCount(s)>=50,  threshold:50,  total:()=>_confirmedMoviesCount(state) },
+  { id:'movie_80',  cat:'movies',     emoji:'🎞️', label:'Watch 80 movies',   check:s=>_confirmedMoviesCount(s)>=80,  threshold:80,  total:()=>_confirmedMoviesCount(state) },
+  { id:'movie_100', cat:'movies',     emoji:'🎖️', label:'Watch 100 movies',  check:s=>_confirmedMoviesCount(s)>=100, threshold:100, total:()=>_confirmedMoviesCount(state) },
   // ── Games ──
   { id:'game_2',   cat:'games',       emoji:'🎮', label:'Play 2 games',      check:s=>_playedGames(s)>=2,  threshold:2,  total:()=>_playedGames(state) },
   { id:'game_5',   cat:'games',       emoji:'🕹️', label:'Play 5 games',      check:s=>_playedGames(s)>=5,  threshold:5,  total:()=>_playedGames(state) },
@@ -3213,16 +3196,14 @@ function renderMovies(){
 function addMovie(type){
   if(!_pendingMovieTitle) return;
   const entry = {id:uid(), title:_pendingMovieTitle, type, date:Date.now()};
-  state.movies.push(entry);        // show in Today tab
-  state.movieRecord.push(entry);   // persist in Record tab
+  state.movieRecord.push(entry); // goes directly to persistent record
   document.getElementById('movie-input').value='';
   document.getElementById('movie-input').disabled=false;
   document.getElementById('movie-type-chooser').classList.remove('show');
   _pendingMovieTitle='';
   saveState(); sAdd();
-  renderMovies();
   if(recTab==='movies') renderRecMovies();
-  const label = type==='watch' ? '🍿 Added to movies!' : '⭐ Added to movies!';
+  const label = type==='watch' ? '🍿 Added to movies record!' : '⭐ Added to movies record!';
   _showToast(label);
   pickedFlag=false;
   document.getElementById('movie-choose-result').style.display='none';
@@ -3294,8 +3275,8 @@ function markMovieWatched(){
   const now=Date.now();
   let _watchedEntryId=null;
   const recEntry=state.movieRecord.find(m=>m.title===pickedTitle&&(m.type==='watch'||m.type==='remember'));
-  if(recEntry){ recEntry.type='watched'; recEntry.watchedDate=now; _watchedEntryId=recEntry.id; }
-  else { const newE={id:uid(),title:pickedTitle,type:'watched',date:now,watchedDate:now}; state.movieRecord.push(newE); _watchedEntryId=newE.id; }
+  if(recEntry){ recEntry.type='watched'; recEntry.watchedDate=now; recEntry.achievementConfirmed=true; _watchedEntryId=recEntry.id; }
+  else { const newE={id:uid(),title:pickedTitle,type:'watched',date:now,watchedDate:now,achievementConfirmed:true}; state.movieRecord.push(newE); _watchedEntryId=newE.id; }
   state.watchedMovies.push({id:uid(),title:pickedTitle,date:now});
   const idx=state.movies.findIndex(m=>m.title===pickedTitle);
   if(idx!==-1) state.movies.splice(idx,1);
@@ -3842,8 +3823,8 @@ function confirmBookRating(){
   const i=_pendingBookFinish; if(i===null)return;
   const b=state.books[i];
   if(!state.finishedBooks.some(fb=>fb.bookId===b.id))
-    state.finishedBooks.push({id:uid(),bookId:b.id,title:b.title,date:Date.now(),rating:_pendingBookRating});
-  else{ const fb=state.finishedBooks.find(fb=>fb.bookId===b.id); if(fb)fb.rating=_pendingBookRating; }
+    state.finishedBooks.push({id:uid(),bookId:b.id,title:b.title,date:Date.now(),rating:_pendingBookRating,achievementConfirmed:true});
+  else{ const fb=state.finishedBooks.find(fb=>fb.bookId===b.id); if(fb){fb.rating=_pendingBookRating; fb.achievementConfirmed=true;} }
   document.getElementById('book-rate-modal').style.display='none';
   _pendingBookFinish=null;
   saveState(); renderBooks(); renderRecBooks(); sVictory(); confetti(80); checkAchievements();
@@ -3858,7 +3839,7 @@ function skipBookRating(){
   const i=_pendingBookFinish; if(i===null){document.getElementById('book-rate-modal').style.display='none';return;}
   const b=state.books[i];
   if(!state.finishedBooks.some(fb=>fb.bookId===b.id))
-    state.finishedBooks.push({id:uid(),bookId:b.id,title:b.title,date:Date.now(),rating:null});
+    state.finishedBooks.push({id:uid(),bookId:b.id,title:b.title,date:Date.now(),rating:null,achievementConfirmed:true});
   document.getElementById('book-rate-modal').style.display='none';
   _pendingBookFinish=null;
   saveState(); renderBooks(); renderRecBooks(); sVictory(); confetti(80); checkAchievements();
@@ -5690,8 +5671,8 @@ function renameMovieRec(id) {
     // Update state.movies: match by ID first, fall back to title
     const sm = state.movies.find(x => x.id === id) || state.movies.find(x => x.title === oldTitle);
     if (sm) sm.title = name;
-    // Update watchedMovies if this was a counted watched/confirmed entry
-    if (m.type === 'watched' || (m.type === 'remember' && m.achievementConfirmed)) {
+    // Update watchedMovies if this entry is currently counting towards accomplishments
+    if (m.achievementConfirmed) {
       const wIdx = state.watchedMovies.map(w => w.title).lastIndexOf(oldTitle);
       if (wIdx !== -1) state.watchedMovies[wIdx].title = name;
     }
@@ -5972,11 +5953,9 @@ function renderRecMovies(){
   if(!items.length){el.appendChild(recEmpty('No watched movies yet ✅'));renderPagination('movies',0);return;}
   pagSlice(items,'movies').forEach(m=>{
     const icon = m.type === 'remember' ? '⭐' : '🎬';
-    const achBtn = m.type === 'remember'
-      ? (m.achievementConfirmed
-          ? `<button class="btn btn-danger" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="removeMovieAchievement('${m.id}')">🏆 Remove from accomplishments</button>`
-          : `<button class="btn btn-sage" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="confirmMovieAchievement('${m.id}')">🏆 Add to accomplishments</button>`)
-      : '';
+    const achBtn = m.achievementConfirmed
+      ? `<button class="btn btn-danger" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="removeMovieAchievement('${m.id}')">🏆 Remove from accomplishments</button>`
+      : `<button class="btn btn-sage" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="confirmMovieAchievement('${m.id}')">🏆 Add to accomplishments</button>`;
     const d=document.createElement('div'); d.className='record-item rec-movie';
     d.innerHTML=`<div class="record-body">
       <div class="record-name" style="display:flex;align-items:center;gap:8px;">${icon}<span>${esc(m.title)}</span></div>
@@ -5998,17 +5977,16 @@ function renderRecMovies(){
 function markMovieWatchedFromRecord(recId){
   const entry=state.movieRecord.find(x=>x.id===recId); if(!entry)return;
   const now=Date.now();
-  entry.type='watched'; entry.watchedDate=now;
+  entry.type='watched'; entry.watchedDate=now; entry.achievementConfirmed=true;
   state.watchedMovies.push({id:uid(),title:entry.title,date:now});
-  state.movies=state.movies.filter(x=>x.id!==recId);
-  saveState(); renderRecMovies(); renderMovies(); sStudyDone(); confetti(30); checkAchievements();
+  saveState(); renderRecMovies(); sStudyDone(); confetti(30); checkAchievements();
   openMediaRatingModal('movie', recId, false);
 }
 
 function undoMovieWatched(recId){
   const entry=state.movieRecord.find(x=>x.id===recId); if(!entry)return;
   showConfirm('↩',`Move "${entry.title}" back to To Watch?`,()=>{
-    entry.type='watch'; delete entry.watchedDate;
+    entry.type='watch'; delete entry.watchedDate; delete entry.achievementConfirmed;
     // Remove most recent matching watchedMovies entry
     const wIdx=state.watchedMovies.map(w=>w.title).lastIndexOf(entry.title);
     if(wIdx!==-1) state.watchedMovies.splice(wIdx,1);
@@ -6038,7 +6016,7 @@ function delRecMovieEntry(recId){
   const entry=state.movieRecord.find(x=>x.id===recId);
   const wasFromGreatList = entry && (state.movieGreatListSeen||[]).includes(entry.title);
   showConfirm('🎬',`Remove "${entry?.title}" from your movies record?`,()=>{
-    if(entry?.type==='watched' || (entry?.type==='remember' && entry?.achievementConfirmed)){
+    if(entry?.achievementConfirmed){
       const wIdx=state.watchedMovies.map(w=>w.title).lastIndexOf(entry.title);
       if(wIdx!==-1) state.watchedMovies.splice(wIdx,1);
     }
@@ -6115,11 +6093,9 @@ function renderRecBooks(){
   pagSlice(allFin,'books').forEach(fb=>{
     const isRemember = fb.type === 'remember';
     const icon = isRemember ? '⭐' : '📗';
-    const achBtn = isRemember
-      ? (fb.achievementConfirmed
-          ? `<button class="btn btn-danger" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="removeBookAchievement('${fb.id}')">🏆 Remove from accomplishments</button>`
-          : `<button class="btn btn-sage" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="confirmBookAchievement('${fb.id}')">🏆 Add to accomplishments</button>`)
-      : '';
+    const achBtn = fb.achievementConfirmed
+      ? `<button class="btn btn-danger" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="removeBookAchievement('${fb.id}')">🏆 Remove from accomplishments</button>`
+      : `<button class="btn btn-sage" style="font-size:0.8rem;padding:5px 11px;white-space:nowrap;" onclick="confirmBookAchievement('${fb.id}')">🏆 Add to accomplishments</button>`;
     const d=document.createElement('div'); d.className='record-item rec-book-done';
     if (isRemember) d.style.cssText = 'border-color:var(--coral-light);background:#fff5f2;';
     d.innerHTML=`<div class="record-body">
@@ -7256,10 +7232,8 @@ function _parseAndImport(text) {
         if (state.movieRecord.some(x => x.title.toLowerCase() === title.toLowerCase())) return;
         const now = Date.now();
         const newId = uid();
-        // movieRecord is what renderRecMovies() reads
+        // Import as 'watched' type but WITHOUT achievementConfirmed — user must click "Add to accomplishments"
         state.movieRecord.push({ id: newId, title, type: 'watched', date: now, watchedDate: now });
-        // watchedMovies tracks the watched count / achievements
-        state.watchedMovies.push({ id: uid(), title, date: now });
         imported++;
       });
     }
@@ -7988,12 +7962,20 @@ function updateCompletion(pid) {
     deepnight: 'linear-gradient(to bottom,#020307 0%,#060c1c 100%)',
   };
 
-  // ── Platform rendering note ──────────────────────────────────────────────────
-  // iPhone 14 / iOS WebKit: CSS backgrounds on fixed elements use correct sRGB
-  // rendering — the GRADIENTS values above are the true intended colours.
+  // ── Android / Samsung compensation ──────────────────────────────────────────
+  // Problem 1 (structural — now fixed above): Chrome on Android promotes
+  //   position:fixed elements to GPU compositor layers which use linear-gamma
+  //   blending, darkening midtones.  Fixed by putting the base gradient on html.
   //
-  // Android / Samsung compensation is still applied for Android Chrome users
-  // visiting this page, but the primary target is iPhone 14.
+  // Problem 2 (display — addressed below): Samsung S22 Ultra "Vivid" mode
+  //   applies a hardware S-curve that compresses midtones further downward.
+  //   Chrome on Android also does not apply ICC color management for CSS
+  //   backgrounds on wide-gamut (DCI-P3) displays.
+  //
+  // Fix for problem 2: for Android Chrome, push each RGB stop ~42% toward
+  //   white:  brighten(c) = c + (255 - c) × 0.42
+  //   This compensates the Vivid tone curve without touching night/deepnight
+  //   (near-black stops are barely affected by the S-curve anyway).
   const _isAndroid = /Android/i.test(navigator.userAgent);
   if (_isAndroid) {
     // Day (baseline → 42% toward white):
@@ -8698,53 +8680,26 @@ document.addEventListener('click', _unlockAllAudio, { once: true });
 
 // ── iOS ADD TO HOME SCREEN ──────────────────────────────
 (function(){
-  // Generate pixelated-earth apple-touch-icon matching the splash screen background
+  // Generate a themed apple-touch-icon from canvas
   try {
     const c = document.createElement('canvas');
     c.width = c.height = 180;
     const x = c.getContext('2d');
-    const W = 180, H = 180, R = 32;
-
-    // Background: #e8f5ee with splash-screen radial gradients
-    x.fillStyle = '#e8f5ee';
+    const g = x.createLinearGradient(0,0,180,180);
+    g.addColorStop(0,'#7ec8a4'); g.addColorStop(1,'#5aad87');
+    x.fillStyle = g;
     x.beginPath();
-    x.moveTo(R,0); x.lineTo(W-R,0); x.quadraticCurveTo(W,0,W,R);
-    x.lineTo(W,H-R); x.quadraticCurveTo(W,H,W-R,H);
-    x.lineTo(R,H); x.quadraticCurveTo(0,H,0,H-R);
-    x.lineTo(0,R); x.quadraticCurveTo(0,0,R,0);
+    // Rounded rect (manual, for compatibility)
+    const r = 36, w = 180, h = 180;
+    x.moveTo(r,0); x.lineTo(w-r,0); x.quadraticCurveTo(w,0,w,r);
+    x.lineTo(w,h-r); x.quadraticCurveTo(w,h,w-r,h);
+    x.lineTo(r,h); x.quadraticCurveTo(0,h,0,h-r);
+    x.lineTo(0,r); x.quadraticCurveTo(0,0,r,0);
     x.closePath(); x.fill();
-
-    // Overlay soft radial gradients from splash screen
-    x.save(); x.beginPath();
-    x.moveTo(R,0); x.lineTo(W-R,0); x.quadraticCurveTo(W,0,W,R);
-    x.lineTo(W,H-R); x.quadraticCurveTo(W,H,W-R,H);
-    x.lineTo(R,H); x.quadraticCurveTo(0,H,0,H-R);
-    x.lineTo(0,R); x.quadraticCurveTo(0,0,R,0); x.closePath(); x.clip();
-    var g1=x.createRadialGradient(W*0.1,H*0.2,0,W*0.1,H*0.2,W*0.4);
-    g1.addColorStop(0,'#d0eddb'); g1.addColorStop(1,'rgba(232,245,238,0)');
-    x.fillStyle=g1; x.fillRect(0,0,W,H);
-    var g2=x.createRadialGradient(W*0.9,H*0.8,0,W*0.9,H*0.8,W*0.4);
-    g2.addColorStop(0,'#c8e8f5'); g2.addColorStop(1,'rgba(232,245,238,0)');
-    x.fillStyle=g2; x.fillRect(0,0,W,H);
-    var g3=x.createRadialGradient(W*0.5,H*0.5,0,W*0.5,H*0.5,W*0.7);
-    g3.addColorStop(0,'#fdf8ee'); g3.addColorStop(1,'rgba(232,245,238,0)');
-    x.fillStyle=g3; x.fillRect(0,0,W,H);
-    x.restore();
-
-    // Pixelated earth — same map as the splash screen
-    var MAP=['____________','___bbbbbb___','__ggbbbbbb__','_bggggbbbbb_',
-             '_bggggbbbbb_','_bgggbbbbbb_','_bbggbbbgbb_','_bbbbbbbggb_',
-             '_bbbbbbggbb_','__bbbbgbbb__','___bbbbbb___','____________'];
-    var P=13, OX=Math.round((W-MAP[0].length*P)/2), OY=Math.round((H-MAP.length*P)/2);
-    MAP.forEach(function(row,ry){
-      row.split('').forEach(function(c,rx){
-        if(c==='b'){x.fillStyle='#3a8fd4'; x.fillRect(OX+rx*P,OY+ry*P,P,P);}
-        else if(c==='g'){x.fillStyle='#4eb87a'; x.fillRect(OX+rx*P,OY+ry*P,P,P);}
-      });
-    });
-
-    var link=document.getElementById('apple-touch-icon-link');
-    if(link) link.href=c.toDataURL('image/png');
+    x.font = '110px serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText('🌿', 90, 96);
+    const link = document.getElementById('apple-touch-icon-link');
+    if (link) link.href = c.toDataURL('image/png');
   } catch(e) {}
 
   // Show install banner on iOS Safari (not already installed)
@@ -9378,76 +9333,76 @@ document.addEventListener('click', _unlockAllAudio, { once: true });
 (function () {
   const MESSAGES = {
     sunrise: [
-      "Fahad, you're up early \u2014 that's dedication!",
-      "Good morning, Fahad! Coffee and records first?",
-      "Early bird, Fahad! The world is still quiet.",
-      "Fahad, up before the sun! What are we tracking today?",
-      "Morning, Fahad! A fresh page and a fresh day!",
-      "Fahad, the day hasn't even started and you're already here!",
-      "Good morning, Fahad! Something to log before the world wakes up?",
-      "Rise and shine, Fahad! Today is yours to write!",
-      "Fahad, you caught the quiet hours \u2014 make them count!",
-      "Early morning, Fahad \u2014 some coffee and record keeping?",
+      "Bdoor, you're up early \u2014 that's dedication!",
+      "Good morning, Bdoor! Coffee and records first?",
+      "Early bird, Bdoor! The world is still quiet.",
+      "Bdoor, up before the sun! What are we tracking today?",
+      "Morning, Bdoor! A fresh page and a fresh day!",
+      "Bdoor, the day hasn't even started and you're already here!",
+      "Good morning, Bdoor! Something to log before the world wakes up?",
+      "Rise and shine, Bdoor! Today is yours to write!",
+      "Bdoor, you caught the quiet hours \u2014 make them count!",
+      "Early morning, Bdoor \u2014 some coffee and record keeping?",
     ],
     morning: [
-      "Good morning, Fahad! Today is yours to write!",
-      "Fahad, are you hydrated? Drink some water first!",
-      "Hey Fahad, how's the morning treating you?",
-      "Good to see you, Fahad! Something new to log?",
-      "Fahad, a quick note before you forget?",
-      "Morning, Fahad! What are we tracking today?",
-      "Fahad, the day is just getting started \u2014 what's first?",
-      "Hello, Fahad! What's worth keeping from today so far?",
-      "Good morning, Fahad! Let's make it a productive one!",
-      "Fahad, fresh morning energy \u2014 what are we recording?",
+      "Good morning, Bdoor! Today is yours to write!",
+      "Bdoor, are you hydrated? Drink some water first!",
+      "Hey Bdoor, how's the morning treating you?",
+      "Good to see you, Bdoor! Something new to log?",
+      "Bdoor, a quick note before you forget?",
+      "Morning, Bdoor! What are we tracking today?",
+      "Bdoor, the day is just getting started \u2014 what's first?",
+      "Hello, Bdoor! What's worth keeping from today so far?",
+      "Good morning, Bdoor! Let's make it a productive one!",
+      "Bdoor, fresh morning energy \u2014 what are we recording?",
     ],
     afternoon: [
-      "Good afternoon, Fahad \u2014 what are we recording today?",
-      "Fahad, are you hydrated? Drink some water first!",
-      "Hey Fahad, how's the afternoon going?",
-      "Good to see you, Fahad! Something new to log?",
-      "Midday check-in, Fahad! How's progress looking?",
-      "Fahad, a quick note before you forget?",
-      "Good afternoon, Fahad! Have you eaten today?",
-      "Fahad, the day is running \u2014 what are we adding today?",
-      "Hello, Fahad! What's worth keeping from today so far?",
-      "Afternoon, Fahad! A good moment to catch up on records.",
+      "Good afternoon, Bdoor \u2014 what are we recording today?",
+      "Bdoor, are you hydrated? Drink some water first!",
+      "Hey Bdoor, how's the afternoon going?",
+      "Good to see you, Bdoor! Something new to log?",
+      "Midday check-in, Bdoor! How's progress looking?",
+      "Bdoor, a quick note before you forget?",
+      "Good afternoon, Bdoor! Have you eaten today?",
+      "Bdoor, the day is running \u2014 what are we adding today?",
+      "Hello, Bdoor! What's worth keeping from today so far?",
+      "Afternoon, Bdoor! A good moment to catch up on records.",
     ],
     sunset: [
-      "Good evening, Fahad! What are you in here for today?",
-      "Fahad, the sun is going down \u2014 still going strong?",
-      "Evening, Fahad! Time to log the day's highlights?",
-      "Fahad, golden hour! A perfect time to reflect.",
-      "Good evening, Fahad! Something from today worth keeping?",
-      "Fahad, what did the day bring?",
-      "Evening, Fahad! Don't let the day slip by unrecorded!",
-      "Good evening, Fahad! Let's capture the day before it fades!",
-      "Sunset, Fahad \u2014 a good moment to pause and record!",
-      "Fahad, winding down or just getting started?",
+      "Good evening, Bdoor! What are you in here for today?",
+      "Bdoor, the sun is going down \u2014 still going strong?",
+      "Evening, Bdoor! Time to log the day's highlights?",
+      "Bdoor, golden hour! A perfect time to reflect.",
+      "Good evening, Bdoor! Something from today worth keeping?",
+      "Bdoor, what did the day bring?",
+      "Evening, Bdoor! Don't let the day slip by unrecorded!",
+      "Good evening, Bdoor! Let's capture the day before it fades!",
+      "Sunset, Bdoor \u2014 a good moment to pause and record!",
+      "Bdoor, winding down or just getting started?",
     ],
     night: [
-      "Fahad, evening check-in \u2014 what's going in the records?",
-      "Good evening, Fahad! Something worth noting tonight?",
-      "Wow, Fahad! What brings you here tonight?",
-      "Evening, Fahad! Something important to record?",
-      "Fahad, still here? What needs noting tonight?",
-      "Wow \u2014 Fahad has some important records to enter!",
-      "Fahad, recording something tonight?",
-      "Night check-in, Fahad! What's going in the records?",
-      "Fahad, the night is yours! What are we tracking?",
-      "Evening vibes, Fahad! What did the day bring?",
+      "Bdoor, evening check-in \u2014 what's going in the records?",
+      "Good evening, Bdoor! Something worth noting tonight?",
+      "Wow, Bdoor! What brings you here tonight?",
+      "Evening, Bdoor! Something important to record?",
+      "Bdoor, still here? What needs noting tonight?",
+      "Wow \u2014 Bdoor has some important records to enter!",
+      "Bdoor, recording something tonight?",
+      "Night check-in, Bdoor! What's going in the records?",
+      "Bdoor, the night is yours! What are we tracking?",
+      "Evening vibes, Bdoor! What did the day bring?",
     ],
     deepnight: [
-      "Fahad, it's very late \u2014 are you sleeping soon?",
-      "Deep into the night, Fahad! Something that couldn't wait?",
-      "Fahad, make sure you sleep well tonight.",
-      "Late night records, Fahad? Impressive dedication!",
-      "Fahad, the world is asleep \u2014 what brings you here?",
-      "Wow, Fahad! Important records at this hour!",
-      "Fahad, a midnight adventure in the records!",
-      "Very late, Fahad! What couldn't wait until morning?",
-      "Fahad, burning the midnight oil \u2014 love the dedication!",
-      "Night owl Fahad! What are we adding tonight?",
+      "Bdoor, it's very late \u2014 are you sleeping soon?",
+      "Deep into the night, Bdoor! Something that couldn't wait?",
+      "Bdoor, make sure you sleep well tonight.",
+      "Late night records, Bdoor? Impressive dedication!",
+      "Bdoor, the world is asleep \u2014 what brings you here?",
+      "Wow, Bdoor! Important records at this hour!",
+      "Bdoor, a midnight adventure in the records!",
+      "Very late, Bdoor! What couldn't wait until morning?",
+      "Bdoor, burning the midnight oil \u2014 love the dedication!",
+      "Night owl Bdoor! What are we adding tonight?",
     ],
   };
 
